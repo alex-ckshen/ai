@@ -118,17 +118,18 @@
       
       .blur-overlay {
          background: linear-gradient(120deg, rgba(59, 130, 246, 0.05) 0%, rgba(147, 51, 234, 0.05) 100%);
-         backdrop-filter: blur(2px);
+         backdrop-filter: blur(16px);
+         -webkit-backdrop-filter: blur(16px);
       }
     </style>
     <script type="importmap">
     {
       "imports": {
-        "react": "https://esm.sh/react@^19.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@^19.2.0/client",
-        "lucide-react": "https://esm.sh/lucide-react@^0.555.0",
-        "@google/genai": "https://esm.sh/@google/genai@^1.30.0",
-        "react-markdown": "https://esm.sh/react-markdown@^10.1.0"
+        "react": "https://esm.sh/react@19.0.0",
+        "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.455.0",
+        "@google/genai": "https://esm.sh/@google/genai@1.34.0",
+        "react-markdown": "https://esm.sh/react-markdown@10.0.0"
       }
     }
     </script>
@@ -144,7 +145,7 @@
         Trash2, Terminal, Sparkles, AlertCircle, ChevronRight, Settings2,
         LayoutGrid, MessageSquare, Timer, Eye, EyeOff, Crown, Zap, Globe, Brain, Sliders,
         Copy, Check, WrapText, ChevronDown, ChevronUp, ShieldCheck, X, Swords,
-        Info, Edit2, CheckSquare, Plus, RotateCcw
+        Info, Edit2, CheckSquare, Plus, RotateCcw, RefreshCw
       } from 'lucide-react';
       import { GoogleGenAI } from "@google/genai";
       import ReactMarkdown from 'react-markdown';
@@ -154,21 +155,21 @@
       const DEFAULT_SYSTEM_PROMPT = "You are a helpful, precise, and creative AI assistant.";
 
       const MODEL_DATA = {
-        "Gemini 3.0": [
-          { id: "ui-gemini-3.0-flash", model: "gemini-3-flash-preview", label: "Flash" },
-          { id: "ui-gemini-3.0-pro", model: "gemini-3-pro-preview", label: "Pro" },
+        "Gemini 3": [
+          { id: "ui-gemini-3-flash-preview", model: "gemini-3-flash-preview", label: "Flash" },
+          { id: "ui-gemini-3-pro-preview", model: "gemini-3-pro-preview", label: "Pro" },
         ],
         "Gemini 2.5": [
-          { id: "ui-gemini-2.5-flash", model: "gemini-2.5-flash", label: "Flash" }, 
-          { id: "ui-gemini-2.5-flash-lite", model: "gemini-flash-lite-latest", label: "Flash Lite" },
+          { id: "ui-gemini-2.5-flash", model: "gemini-2.5-flash", label: "Flash" },
+          { id: "ui-gemini-2.5-lite", model: "gemini-2.5-flash-lite", label: "Flash Lite" },
         ]
       };
 
       const COMPARE_MODELS = [
-        { id: "cmp-3.0-flash", model: "gemini-3-flash-preview", name: "3.0 Flash" },
-        { id: "cmp-3.0-pro", model: "gemini-3-pro-preview", name: "3.0 Pro" },
+        { id: "cmp-3-flash", model: "gemini-3-flash-preview", name: "3 Flash" },
+        { id: "cmp-3-pro", model: "gemini-3-pro-preview", name: "3 Pro" },
         { id: "cmp-2.5-flash", model: "gemini-2.5-flash", name: "2.5 Flash" },
-        { id: "cmp-2.5-lite", model: "gemini-flash-lite-latest", name: "2.5 Lite" },
+        { id: "cmp-2.5-lite", model: "gemini-2.5-flash-lite", name: "2.5 Lite" },
       ];
 
       const DEFAULT_KEYS = [
@@ -295,9 +296,17 @@
       // 1. API Key Modal
       const ApiKeyModal = ({ isOpen, onSubmit, apiKeys, setApiKeys, activeKeyId, setActiveKeyId }) => {
         const [visibleKeys, setVisibleKeys] = useState({});
+        const [copiedId, setCopiedId] = useState(null);
 
         const toggleVisibility = (id) => {
           setVisibleKeys(prev => ({ ...prev, [id]: !prev[id] }));
+        };
+
+        const copyKey = (id, key) => {
+          if (!key) return;
+          navigator.clipboard.writeText(key);
+          setCopiedId(id);
+          setTimeout(() => setCopiedId(null), 2000);
         };
 
         const handleKeyChange = (id, value) => {
@@ -349,6 +358,7 @@
                    {apiKeys.map((k) => {
                       const isActive = activeKeyId === k.id;
                       const isVisible = visibleKeys[k.id];
+                      const isCopied = copiedId === k.id;
                       
                       return (
                          <div 
@@ -380,7 +390,7 @@
                                />
                             </div>
                             
-                            {/* Key Input (Right) with Toggle */}
+                            {/* Key Input (Right) with Toggle & Copy */}
                             <div className="flex-1 flex items-center bg-white dark:bg-black/20 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
                                <input
                                   type={isVisible ? "text" : "password"}
@@ -391,12 +401,22 @@
                                      isActive ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-500'
                                   }`}
                                 />
-                                <button 
-                                   onClick={() => toggleVisibility(k.id)}
-                                   className="ml-2 text-gray-400 hover:text-blue-500 transition-colors p-1"
-                                >
-                                   {isVisible ? <EyeOff size={14} /> : <Eye size={14} />}
-                                </button>
+                                <div className="flex items-center gap-1 ml-2">
+                                  <button 
+                                    onClick={() => copyKey(k.id, k.key)}
+                                    className={`p-1 transition-colors ${isCopied ? 'text-green-500' : 'text-gray-400 hover:text-blue-500'}`}
+                                    title="Copy API Key"
+                                  >
+                                    {isCopied ? <Check size={14} /> : <Copy size={14} />}
+                                  </button>
+                                  <button 
+                                     onClick={() => toggleVisibility(k.id)}
+                                     className="text-gray-400 hover:text-blue-500 transition-colors p-1"
+                                     title={isVisible ? "Hide Key" : "Show Key"}
+                                  >
+                                     {isVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+                                  </button>
+                                </div>
                             </div>
 
                             {/* Delete Button */}
@@ -446,17 +466,17 @@
             
             <div className="p-3 bg-white/50 dark:bg-black/20 rounded-xl border border-gray-200/50 dark:border-white/5 shadow-sm space-y-4">
               
-              {/* Family Group: Gemini 3.0 */}
+              {/* Family Group: Gemini 3 */}
               <div className="space-y-2">
                 <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider pl-1">
-                  Gemini 3.0
+                  Gemini 3
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {MODEL_DATA["Gemini 3.0"].map((model) => (
+                  {MODEL_DATA["Gemini 3"].map((model) => (
                     <button
                       key={model.id}
                       onClick={() => {
-                        setSelectedFamily("Gemini 3.0");
+                        setSelectedFamily("Gemini 3");
                         setSelectedModel(model.id);
                       }}
                       className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all truncate flex-1 min-w-[70px] ${
@@ -511,8 +531,8 @@
         setThinkingBudget,
         selectedFamily
       }) => {
-        // Thinking supports Gemini 3.0 and 2.5
-        const isThinkingSupported = selectedFamily === "Gemini 2.5" || selectedFamily === "Gemini 3.0";
+        // Thinking supports Gemini 3 and 2.5
+        const isThinkingSupported = selectedFamily === "Gemini 2.5" || selectedFamily === "Gemini 3";
 
         return (
           <div className="flex flex-col gap-4 animate-fade-in-up">
@@ -640,8 +660,8 @@
             <div className="space-y-2">
                 {COMPARE_MODELS.map(model => {
                   const isActive = activeModels.includes(model.id);
-                  // 3.0 and 2.5 support thinking
-                  const isThinkingSupported = model.id.includes("3.0") || model.id.includes("2.5");
+                  // 3 and 2.5 support thinking
+                  const isThinkingSupported = model.id.includes("3") || model.id.includes("2.5");
                   const tConfig = thinkingConfigs[model.id] || { mode: 'off', budget: 1024 };
 
                   return (
@@ -718,25 +738,27 @@
         currentModelLabel,
         messagesEndRef,
         chatContainerRef,
-        activeKeyName
+        activeKeyName,
+        isKeyMismatch,
+        onClearChat
       }) => {
         return (
           <div className="flex-1 flex h-full overflow-hidden">
             <main className="flex-1 flex flex-col min-w-0 relative bg-white/50 dark:bg-[#09090b] glass-panel transition-colors duration-500 h-full">
-              {/* Header */}
-              <header className="absolute top-0 left-0 right-0 z-10 p-6 flex items-center justify-between pointer-events-none">
-                <div className="pointer-events-auto">
-                  <h1 className="text-3xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 drop-shadow-sm">
+              {/* Header with Blur */}
+              <header className="absolute top-0 left-0 right-0 z-30 p-6 flex items-center justify-between pointer-events-none">
+                <div className="pointer-events-auto bg-white/30 dark:bg-black/20 backdrop-blur-md rounded-2xl p-4 border border-white/20 dark:border-white/5 shadow-xl">
+                  <h1 className="text-3xl font-bold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 drop-shadow-sm leading-none">
                     {selectedFamily}
                   </h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs font-mono uppercase tracking-widest text-gray-500 dark:text-gray-500">
-                      RUNNING
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                      <RefreshCw size={10} className="animate-spin-slow" /> RUNNING
                     </span>
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                       {currentModelLabel}
                     </span>
-                    <span className="text-xs font-mono px-2 py-0.5 text-gray-400 border border-gray-200 dark:border-white/10 rounded-full">
+                    <span className="text-xs font-mono px-2 py-0.5 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-white/10 rounded-full bg-white/40 dark:bg-black/20">
                        {activeKeyName}
                     </span>
                   </div>
@@ -746,8 +768,30 @@
               {/* Messages */}
               <div 
                 ref={chatContainerRef}
-                className="flex-1 overflow-y-auto px-4 md:px-20 pt-32 pb-4 scroll-smooth"
+                className="flex-1 overflow-y-auto px-4 md:px-20 pt-40 pb-4 scroll-smooth relative"
               >
+                {/* API Switch Interruption Overlay */}
+                {isKeyMismatch && messages.length > 0 && (
+                  <div className="absolute inset-0 z-40 blur-overlay flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
+                    <div className="bg-white dark:bg-[#18181b] p-8 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 max-w-sm space-y-6 animate-scale-in">
+                      <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto text-yellow-600 dark:text-yellow-400">
+                        <AlertCircle size={32} />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold">API Key Changed</h3>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">The active API key was changed mid-session. Please clear and start a new chat to prevent context errors.</p>
+                      </div>
+                      <button 
+                        onClick={onClearChat}
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                      >
+                        <RefreshCw size={18} />
+                        New Chat
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center opacity-40 select-none animate-scale-in">
                     <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 opacity-20 blur-xl absolute"></div>
@@ -792,14 +836,15 @@
                           handleSend();
                         }
                       }}
-                      placeholder={`Message ${selectedFamily} ${currentModelLabel}...`}
-                      className={`w-full bg-transparent border-none focus:ring-0 resize-none max-h-40 min-h-[50px] py-3 px-4 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 whitespace-pre-wrap`}
+                      disabled={isKeyMismatch}
+                      placeholder={isKeyMismatch ? "API Mismatch - Reset chat" : `Message ${selectedFamily} ${currentModelLabel}...`}
+                      className={`w-full bg-transparent border-none focus:ring-0 resize-none max-h-40 min-h-[50px] py-3 px-4 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 whitespace-pre-wrap disabled:opacity-50`}
                       rows={1}
                       style={{ height: 'auto', minHeight: '52px' }} 
                     />
                     <button
                       onClick={handleSend}
-                      disabled={!input.trim() || isLoading}
+                      disabled={!input.trim() || isLoading || isKeyMismatch}
                       className="mb-1 p-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:bg-gray-400 transition-all shadow-lg shadow-blue-600/20"
                     >
                       {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
@@ -1144,6 +1189,9 @@
         });
         const [activeKeyId, setActiveKeyId] = useState(() => localStorage.getItem('gemini_active_key_id') || 'k1');
         
+        // Track the API key that was actually used to start the chat context
+        const [contextKeyId, setContextKeyId] = useState(null);
+
         const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
         const [viewMode, setViewMode] = useState('chat'); // 'chat' | 'compare' | 'rapid'
         const [isSysPromptExpanded, setIsSysPromptExpanded] = useState(false);
@@ -1180,8 +1228,8 @@
         const rapidControllerRef = useRef(null);
 
         // Model Selection State (Chat Mode)
-        const [selectedFamily, setSelectedFamily] = useState("Gemini 3.0");
-        const [selectedModel, setSelectedModel] = useState("ui-gemini-3.0-flash");
+        const [selectedFamily, setSelectedFamily] = useState("Gemini 3");
+        const [selectedModel, setSelectedModel] = useState("ui-gemini-3-flash-preview");
 
         // Refs
         const messagesEndRef = useRef(null);
@@ -1220,6 +1268,7 @@
           setInput('');
           setCompareResults({});
           setRapidStats({});
+          setContextKeyId(null);
         };
 
         const toggleCompareModel = (modelId) => {
@@ -1232,10 +1281,16 @@
 
         // Chat Send Handler
         const handleSend = async () => {
-          if (!input.trim() || isLoading) return;
+          if (!input.trim() || isLoading || !apiKey) return;
+          
+          // Lock the context key if it's the first message
+          if (messages.length === 0) {
+            setContextKeyId(activeKeyId);
+          }
+
           const currentInput = input.trim();
           setInput('');
-          
+
           const startTime = performance.now();
           const userMsg = { role: 'user', text: currentInput, timestamp: Date.now() };
           setMessages(prev => [...prev, userMsg]);
@@ -1243,91 +1298,80 @@
 
           try {
             const ai = new GoogleGenAI({ apiKey });
-            const history = messages.map(m => ({
-              role: m.role,
-              parts: [{ text: m.text }]
-            }));
 
-            const modelConfig = MODEL_DATA[selectedFamily].find(m => m.id === selectedModel);
-            const apiModelName = modelConfig ? modelConfig.model : "gemini-3-flash-preview";
+            const modelInfo = MODEL_DATA[selectedFamily].find(m => m.id === selectedModel);
+            const modelName = modelInfo ? modelInfo.model : "gemini-3-flash-preview";
+            
+            // Build contents array for history + new message
+            const contents = messages.map(msg => ({
+              role: msg.role,
+              parts: [{ text: msg.text }]
+            })).concat({ role: 'user', parts: [{ text: currentInput }] });
 
-            const effectiveSystemPrompt = enableSearch 
-               ? systemPrompt + "\n\nIMPORTANT: You have access to Google Search. If the user's query asks for current information, facts, or data that you do not have in your internal knowledge base, you MUST use the googleSearch tool. When using the tool, simply output the search query. DO NOT output any conversational text before the search tool call." 
-               : systemPrompt;
-
-            const requestConfig = {
-              systemInstruction: effectiveSystemPrompt,
+            const config = {
               temperature: 0.7,
             };
 
+            if (thinkingMode === 'off') {
+              config.thinkingConfig = { thinkingBudget: 0 };
+            } else if (thinkingMode === 'custom') {
+              config.thinkingConfig = { thinkingBudget: thinkingBudget };
+            }
+
+            const request = {
+              model: modelName,
+              contents,
+              config: {
+                ...config,
+                systemInstruction: systemPrompt,
+              }
+            };
+
             if (enableSearch) {
-              requestConfig.tools = [{ googleSearch: {} }];
+              request.config.tools = [{ googleSearch: {} }];
             }
-
-            // Support thinking for Gemini 2.5 and 3.0 series
-            if (selectedFamily === "Gemini 2.5" || selectedFamily === "Gemini 3.0") {
-               if (thinkingMode === 'custom') {
-                 requestConfig.thinkingConfig = { thinkingBudget: thinkingBudget };
-               } else if (thinkingMode === 'off') {
-                 requestConfig.thinkingConfig = { thinkingBudget: 0 };
-               }
-            }
-
-            const chatSession = ai.chats.create({
-              model: apiModelName,
-              config: requestConfig,
-              history: history,
-            });
 
             setMessages(prev => [...prev, { role: 'model', text: '', timestamp: Date.now() }]);
 
-            const result = await chatSession.sendMessageStream({ message: currentInput });
-            
-            let fullText = "";
-            let finalGroundingMetadata = null;
+            const response = await ai.models.generateContentStream(request);
 
-            for await (const chunk of result) {
+            let fullText = "";
+            let groundingMetadata = null;
+
+            for await (const chunk of response) {
               const text = chunk.text;
               if (text) fullText += text;
-              
+
               if (chunk.candidates?.[0]?.groundingMetadata) {
-                finalGroundingMetadata = chunk.candidates[0].groundingMetadata;
+                groundingMetadata = chunk.candidates[0].groundingMetadata;
               }
 
               setMessages(prev => {
                 const newMsgs = [...prev];
-                const lastMsg = newMsgs[newMsgs.length - 1];
-                if (lastMsg.role === 'model') {
-                  lastMsg.text = fullText;
-                  if (finalGroundingMetadata) {
-                    lastMsg.groundingMetadata = finalGroundingMetadata;
-                  }
+                const last = newMsgs[newMsgs.length - 1];
+                if (last.role === 'model') {
+                  last.text = fullText;
+                  if (groundingMetadata) last.groundingMetadata = groundingMetadata;
                 }
                 return newMsgs;
               });
             }
-            
+
             const endTime = performance.now();
             const duration = (endTime - startTime).toFixed(0);
-            
+
             setMessages(prev => {
-               const newMsgs = [...prev];
-               const lastMsg = newMsgs[newMsgs.length - 1];
-               if (lastMsg.role === 'model') {
-                 lastMsg.metrics = { duration };
-               }
-               return newMsgs;
+              const newMsgs = [...prev];
+              const last = newMsgs[newMsgs.length - 1];
+              if (last.role === 'model') {
+                last.metrics = { duration };
+              }
+              return newMsgs;
             });
 
           } catch (error) {
             console.error("GenAI Error:", error);
-            const modelConfig = MODEL_DATA[selectedFamily].find(m => m.id === selectedModel);
-            const apiModelName = modelConfig ? modelConfig.model : selectedModel;
-            let errorMessage = error.message;
-            if (errorMessage.includes("404")) {
-               errorMessage = `The model "${apiModelName}" was not found (404).`;
-            }
-            setMessages(prev => [...prev, { role: 'model', text: `**Error**: ${errorMessage}`, timestamp: Date.now() }]);
+            setMessages(prev => [...prev, { role: 'model', text: `**Error**: ${error.message}` }]);
           } finally {
             setIsLoading(false);
           }
@@ -1335,97 +1379,77 @@
 
         // Compare Handler
         const handleCompare = async () => {
-          if (!compareInput.trim() || isComparing) return;
+          if (!compareInput.trim() || isComparing || !apiKey) return;
           const prompt = compareInput.trim();
           setIsComparing(true);
-          
-          const targetModels = COMPARE_MODELS.filter(m => activeCompareModels.includes(m.id));
 
+          const targetModels = COMPARE_MODELS.filter(m => activeCompareModels.includes(m.id));
           const initialResults = {};
           targetModels.forEach(m => {
-            initialResults[m.id] = { 
-              text: '', 
-              loading: true, 
-              error: null, 
-              speed: null,
-              groundingMetadata: null
-            };
+            initialResults[m.id] = { text: '', loading: true, error: null, speed: null, groundingMetadata: null };
           });
           setCompareResults(initialResults);
 
           const ai = new GoogleGenAI({ apiKey });
 
           const runModel = async (model) => {
-             const startTime = performance.now(); 
+            const startTime = performance.now();
 
-             try {
-               const chatConfig = { systemInstruction: systemPrompt };
-               if (enableCompareSearch) {
-                 chatConfig.tools = [{ googleSearch: {} }];
-               }
-               if (model.id.includes("2.5") || model.id.includes("3.0")) {
-                 const tConfig = compareThinkingConfigs[model.id] || { mode: 'off', budget: 1024 };
-                 if (tConfig.mode === 'off') {
-                   chatConfig.thinkingConfig = { thinkingBudget: 0 };
-                 } else if (tConfig.mode === 'custom') {
-                   chatConfig.thinkingConfig = { thinkingBudget: tConfig.budget };
-                 }
-               }
+            try {
+              const config = {
+                temperature: 0.7,
+              };
 
-               const chat = ai.chats.create({
-                 model: model.model,
-                 config: chatConfig
-               });
-               
-               const resultStream = await chat.sendMessageStream({ message: prompt });
-               let fullText = "";
-               let groundingMetadata = null;
-               
-               for await (const chunk of resultStream) {
-                 const text = chunk.text;
-                 if (text) fullText += text;
-                 if (chunk.candidates?.[0]?.groundingMetadata) {
-                   groundingMetadata = chunk.candidates[0].groundingMetadata;
-                 }
-                 
-                 setCompareResults(prev => ({
-                   ...prev,
-                   [model.id]: { 
-                      ...prev[model.id], 
-                      text: fullText,
-                      groundingMetadata: groundingMetadata || prev[model.id]?.groundingMetadata
-                   }
-                 }));
-               }
-               
-               const endTime = performance.now();
-               const durationMs = endTime - startTime;
-               const speed = (durationMs).toFixed(0); 
+              const tConfig = compareThinkingConfigs[model.id] || { mode: 'auto', budget: 4096 };
+              if (tConfig.mode === 'off') {
+                config.thinkingConfig = { thinkingBudget: 0 };
+              } else if (tConfig.mode === 'custom') {
+                config.thinkingConfig = { thinkingBudget: tConfig.budget };
+              }
 
-               setCompareResults(prev => ({
-                 ...prev,
-                 [model.id]: { 
-                   ...prev[model.id], 
-                   text: fullText, 
-                   loading: false, 
-                   duration: speed,
-                   speed: (fullText.length / (durationMs/1000)).toFixed(1), 
-                   groundingMetadata: groundingMetadata 
-                 }
-               }));
+              const request = {
+                model: model.model,
+                contents: prompt,
+                config: {
+                   ...config,
+                   systemInstruction: systemPrompt,
+                }
+              };
 
-             } catch (err) {
-               console.error(err);
-               setCompareResults(prev => ({
-                 ...prev,
-                 [model.id]: { ...prev[model.id], loading: false, error: err.message, duration: 0 }
-               }));
-             }
+              if (enableCompareSearch) {
+                request.config.tools = [{ googleSearch: {} }];
+              }
+
+              const result = await ai.models.generateContent(request);
+
+              const fullText = result.text || "";
+              const groundingMetadata = result.candidates?.[0]?.groundingMetadata || null;
+
+              const endTime = performance.now();
+              const duration = (endTime - startTime).toFixed(0);
+              const speed = (fullText.length / ((endTime - startTime) / 1000)).toFixed(1);
+
+              setCompareResults(prev => ({
+                ...prev,
+                [model.id]: {
+                  ...prev[model.id],
+                  text: fullText,
+                  loading: false,
+                  duration,
+                  speed,
+                  groundingMetadata,
+                }
+              }));
+
+            } catch (err) {
+              setCompareResults(prev => ({
+                ...prev,
+                [model.id]: { ...prev[model.id], loading: false, error: err.message, duration: 0 }
+              }));
+            }
           };
 
-          // Simultaneous Execution
-          await Promise.all(targetModels.map(model => runModel(model)));
-          
+          await Promise.all(targetModels.map(runModel));
           setIsComparing(false);
         };
 
@@ -1474,70 +1498,57 @@
               const currentKeyObj = keysPool[keyIndex];
               const currentKey = currentKeyObj.key;
 
-              // Ensure we display current key being used
               updateStat({ currentKeyName: currentKeyObj.name });
 
               try {
-                 // Clean error state before new attempt
-                 updateStat({ error: null, isRetrying: false });
-                 
-                 // Instantiate NEW client per loop to support switching keys dynamically
-                 const ai = new GoogleGenAI({ apiKey: currentKey });
-                 const chat = ai.chats.create({
-                    model: model.model,
-                    config: { systemInstruction: "Answer concisely." } 
-                 });
-                 
-                 const start = performance.now();
-                 const result = await chat.sendMessage({ message: prompt });
-                 const end = performance.now();
-                 
-                 const duration = end - start;
-                 const text = result.text || "";
+                updateStat({ error: null, isRetrying: false, active: true });
+                const ai = new GoogleGenAI({ apiKey: currentKey });
+                const start = performance.now();
+                const result = await ai.models.generateContent({
+                  model: model.model,
+                  contents: prompt,
+                  config: {
+                    systemInstruction: "Answer concisely.",
+                  }
+                });
+                const end = performance.now();
+                const duration = end - start;
+                const text = result.text || "No response";
 
-                 if (controller && !controller.signal?.aborted) {
-                    setRapidStats(prev => {
-                       const current = prev[model.id];
-                       const newHistory = [{ id: current.count + 1, text, duration }, ...(current.history || [])].slice(0, 50); 
-                       
-                       return {
-                          ...prev,
-                          [model.id]: { 
-                             ...current, 
-                             count: current.count + 1, 
-                             lastDuration: duration,
-                             history: newHistory,
-                             error: null,
-                             isRetrying: false,
-                             currentKeyName: currentKeyObj.name
-                          }
-                       };
-                    });
-                 }
+                if (controller && !controller.signal?.aborted) {
+                  setRapidStats(prev => {
+                    const current = prev[model.id] || { count: 0, history: [] };
+                    const newHistory = [{ id: current.count + 1, text, duration }, ...(current.history || [])].slice(0, 50);
+                    return {
+                      ...prev,
+                      [model.id]: { 
+                        ...current, 
+                        count: current.count + 1, 
+                        lastDuration: duration,
+                        history: newHistory,
+                        error: null,
+                        isRetrying: false,
+                        currentKeyName: currentKeyObj.name,
+                        active: true
+                      }
+                    };
+                  });
+                }
               } catch (e) {
-                 if (controller?.signal?.aborted) {
-                    active = false;
-                    break;
-                 }
-
-                 // Check for Key Rotation Logic
-                 // If error occurs and autoSwitch is ON, we rotate the index
-                 let nextAction = "retry";
-                 
-                 if (autoSwitch && keysPool.length > 1) {
-                    keyIndex = (keyIndex + 1) % keysPool.length;
-                    // Provide visual feedback of rotation
-                    updateStat({ error: `${e.message} (Switching Key...)`, isRetrying: true });
-                 } else {
-                    updateStat({ error: e.message, isRetrying: true });
-                 }
-                 
-                 // 200ms delay for retry iteration
-                 await new Promise(resolve => setTimeout(resolve, 200));
+                if (controller?.signal?.aborted) {
+                  active = false;
+                  return;
+                }
+                if (autoSwitch && keysPool.length > 1) {
+                  keyIndex = (keyIndex + 1) % keysPool.length;
+                  updateStat({ error: `${e.message} (Switching to next key...)`, isRetrying: true });
+                } else {
+                  updateStat({ error: e.message, isRetrying: true, active: false });
+                }
+                await new Promise(resolve => setTimeout(resolve, 300));
               }
            }
         };
-
 
         const currentModelLabel = MODEL_DATA[selectedFamily].find(m => m.id === selectedModel)?.label || selectedModel;
 
@@ -1567,6 +1578,8 @@
                 messagesEndRef={messagesEndRef}
                 chatContainerRef={chatContainerRef}
                 activeKeyName={activeKeyObj.name}
+                isKeyMismatch={contextKeyId !== null && contextKeyId !== activeKeyId}
+                onClearChat={handleClearChat}
               />
             )}
             
