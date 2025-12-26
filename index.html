@@ -1296,9 +1296,10 @@
           setMessages(prev => [...prev, userMsg]);
           setIsLoading(true);
 
-          try {
-            const ai = new GoogleGenAI({ apiKey });
+          // === MOVED HERE: Create AI instance ONCE per send ===
+          const ai = new GoogleGenAI({ apiKey });
 
+          try {
             const modelInfo = MODEL_DATA[selectedFamily].find(m => m.id === selectedModel);
             const modelName = modelInfo ? modelInfo.model : "gemini-3-flash-preview";
             
@@ -1376,7 +1377,7 @@
             setIsLoading(false);
           }
         };
-
+        
         // Compare Handler
         const handleCompare = async () => {
           if (!compareInput.trim() || isComparing || !apiKey) return;
