@@ -1287,66 +1287,68 @@
           if (messages.length === 0) {
             setContextKeyId(activeKeyId);
           }
-
+        
           const currentInput = input.trim();
           setInput('');
-
+        
           const startTime = performance.now();
           const userMsg = { role: 'user', text: currentInput, timestamp: Date.now() };
           setMessages(prev => [...prev, userMsg]);
           setIsLoading(true);
-
-          // === MOVED HERE: Create AI instance ONCE per send ===
+        
           const ai = new GoogleGenAI({ apiKey });
-
+        
           try {
             const modelInfo = MODEL_DATA[selectedFamily].find(m => m.id === selectedModel);
             const modelName = modelInfo ? modelInfo.model : "gemini-3-flash-preview";
             
-            // Build contents array for history + new message
-            const contents = messages.map(msg => ({
-              role: msg.role,
-              parts: [{ text: msg.text }]
-            })).concat({ role: 'user', parts: [{ text: currentInput }] });
-
+            // Build contents array: system first, then history, then new user message
+            const contents = [
+              { role: 'system', parts: [{ text: systemPrompt }] },
+              ...messages.map(msg => ({
+                role: msg.role,
+                parts: [{ text: msg.text }]
+              })),
+              { role: 'user', parts: [{ text: currentInput }] }
+            ];
+        
             const config = {
               temperature: 0.7,
             };
-
-            if (thinkingMode === 'off') {
+        
+            if (thinkingMode !== 'off') {
+              config.thinkingConfig = {
+                thinkingBudget: thinkingMode === 'custom' ? thinkingBudget : -1  // -1 for auto/dynamic
+              };
+            } else {
               config.thinkingConfig = { thinkingBudget: 0 };
-            } else if (thinkingMode === 'custom') {
-              config.thinkingConfig = { thinkingBudget: thinkingBudget };
             }
-
+        
             const request = {
               model: modelName,
               contents,
-              config: {
-                ...config,
-                systemInstruction: systemPrompt,
-              }
+              config
             };
-
+        
             if (enableSearch) {
-              request.config.tools = [{ googleSearch: {} }];
+              config.tools = [{ type: 'google_search' }];
             }
-
+        
             setMessages(prev => [...prev, { role: 'model', text: '', timestamp: Date.now() }]);
-
+        
             const response = await ai.models.generateContentStream(request);
-
+        
             let fullText = "";
             let groundingMetadata = null;
-
+        
             for await (const chunk of response) {
               const text = chunk.text;
               if (text) fullText += text;
-
+        
               if (chunk.candidates?.[0]?.groundingMetadata) {
                 groundingMetadata = chunk.candidates[0].groundingMetadata;
               }
-
+        
               setMessages(prev => {
                 const newMsgs = [...prev];
                 const last = newMsgs[newMsgs.length - 1];
@@ -1357,10 +1359,10 @@
                 return newMsgs;
               });
             }
-
+        
             const endTime = performance.now();
             const duration = (endTime - startTime).toFixed(0);
-
+        
             setMessages(prev => {
               const newMsgs = [...prev];
               const last = newMsgs[newMsgs.length - 1];
@@ -1369,7 +1371,7 @@
               }
               return newMsgs;
             });
-
+        
           } catch (error) {
             console.error("GenAI Error:", error);
             setMessages(prev => [...prev, { role: 'model', text: `**Error**: ${error.message}` }]);
