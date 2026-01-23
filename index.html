@@ -1304,7 +1304,7 @@
             
             // Build contents array: system first, then history, then new user message
             const contents = [
-              { role: 'system', parts: [{ text: systemPrompt }] },
+              { role: 'user', parts: [{ text: systemPrompt }] },
               ...messages.map(msg => ({
                 role: msg.role,
                 parts: [{ text: msg.text }]
